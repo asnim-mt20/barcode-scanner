@@ -3,7 +3,6 @@ from bleak import BleakClient, BleakScanner
 from datetime import datetime
 from conn import get_mongo_collection
 
-# Get MongoDB collection
 collection = get_mongo_collection()
 
 # Mapping scanners to names
@@ -15,7 +14,7 @@ SCANNER_INFO = {
 
 # Mapping scanners to stages
 SCANNER_STAGE_MAP = {
-    "AA:FC:4A:1C:10:35": "Checking",
+    "AA:FC:4A:1C:10:35": "Checking",  #Scanner 2
     "AA:FC:65:5B:11:35": "Ironing",
     "AA:FC:4B:5A:10:35": "Printing"
 }
@@ -39,7 +38,8 @@ async def handle_scanner(mac):
     try:
         async with BleakClient(mac) as client:
             if client.is_connected:
-                print(f"🔗 Connected to {scanner_name} ({mac})")
+                print(f"🔗 Connected to {scanner_name} for {stage} ({mac})")
+                print(f"Upload Scanned Data Now..")
                 data_buffer = []
 
                 def notification_handler(sender, data):
@@ -110,7 +110,7 @@ if __name__ == "__main__":
         if command == 'start':
             asyncio.run(main())
         elif command == 'exit':
-            print("👋 Exiting scanner interface.")
+            print("Exiting scanner interface. Run file again to start.")
             break
         else:
             print("⚠️ Unknown command.")
