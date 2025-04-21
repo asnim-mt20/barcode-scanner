@@ -5,18 +5,28 @@ from conn import get_mongo_collection
 
 collection = get_mongo_collection()
 
-# Mapping scanners to names
+# MAC to Scanner Name
 SCANNER_INFO = {
-    "AA:FC:4A:1C:10:35": "Scanner 2",
-    "AA:FC:65:5B:11:35": "Scanner 4",
-    "AA:FC:4B:5A:10:35": "Scanner 5"
+    "AA:FC:8C:18:12:33": "Scanner 1",
+    "AA:FC:8D:4C:11:35": "Scanner 2", 
+    "AA:FC:8E:56:11:35": "Scanner 3",
+    "AA:FC:4B:5A:10:35": "Scanner 4" 
 }
 
-# Mapping scanners to stages
+# MAC to Stage Mapping
 SCANNER_STAGE_MAP = {
-    "AA:FC:4A:1C:10:35": "Checking",  #Scanner 2
-    "AA:FC:65:5B:11:35": "Ironing",
-    "AA:FC:4B:5A:10:35": "Printing"
+    "AA:FC:8C:18:12:33": "Checking",   # Scanner 1
+    "AA:FC:8D:4C:11:35": "Sewing",     # Scanner 2
+    "AA:FC:8E:56:11:35": "Tailoring",  # Scanner 3
+    "AA:FC:4B:5A:10:35": "Ironing"     # Scanner 4
+}
+
+# MAC to Person Mapping
+SCANNER_PERSON_MAP = {
+    "AA:FC:8C:18:12:33": "Alpa",  # Scanner 1
+    "AA:FC:8D:4C:11:35": "Asgar", # Scanner 2
+    "AA:FC:8E:56:11:35": "Jatin", # Scanner 3
+    "AA:FC:4B:5A:10:35": "Ramesh" # Scanner 4
 }
 
 SCANNER_MAC_ADDRESSES = list(SCANNER_INFO.keys())
@@ -34,12 +44,13 @@ async def get_active_scanners():
 async def handle_scanner(mac):
     scanner_name = SCANNER_INFO.get(mac, "Unknown Scanner")
     stage = SCANNER_STAGE_MAP.get(mac, "Unknown Stage")
-    
+    person_name = SCANNER_PERSON_MAP.get(mac, "Unknown")
+
     try:
         async with BleakClient(mac) as client:
             if client.is_connected:
                 print(f"🔗 Connected to {scanner_name} for {stage} ({mac})")
-                print(f"Upload Scanned Data Now..")
+                print(f"📥 Upload Scanned Data Now...")
                 data_buffer = []
 
                 def notification_handler(sender, data):
@@ -48,23 +59,27 @@ async def handle_scanner(mac):
                     data_buffer.append(decoded)
 
                 await client.start_notify(UUID_RX, notification_handler)
-                await asyncio.sleep(10)
+                await asyncio.sleep(60)  # Wait for scan data to come in
                 await client.stop_notify(UUID_RX)
 
                 if data_buffer:
                     for raw_entry in data_buffer:
-                        order_id = raw_entry.split("-")[0]
+                        order_id = raw_entry
                         timestamp = datetime.now()
 
                         existing = collection.find_one({"order_id": order_id})
+                        entry_data = {
+                            "stage": stage,
+                            "scanning_device": scanner_name,
+                            "scanned_by": person_name,
+                            "timestamp": timestamp
+                        }
+
                         if existing:
                             duplicate_count = existing.get("duplicate_count", 1) + 1
                             entries = existing.get("entries", [])
-                            entries.append({
-                                "stage": stage,
-                                "scanned_by": scanner_name,
-                                "timestamp": timestamp
-                            })
+                            entries.append(entry_data)
+
                             collection.update_one(
                                 {"order_id": order_id},
                                 {
@@ -80,13 +95,7 @@ async def handle_scanner(mac):
                                 "order_id": order_id,
                                 "duplicate_count": 1,
                                 "current_stage": stage,
-                                "entries": [
-                                    {
-                                        "stage": stage,
-                                        "scanned_by": scanner_name,
-                                        "timestamp": timestamp
-                                    }
-                                ]
+                                "entries": [entry_data]
                             }
                             collection.insert_one(doc)
                     print(f"✅ All data from {scanner_name} processed and saved.")
@@ -110,7 +119,7 @@ if __name__ == "__main__":
         if command == 'start':
             asyncio.run(main())
         elif command == 'exit':
-            print("Exiting scanner interface. Run file again to start.")
+            print("👋 Exiting scanner interface. Run file again to start.")
             break
         else:
             print("⚠️ Unknown command.")
