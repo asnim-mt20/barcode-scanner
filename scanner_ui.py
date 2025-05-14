@@ -19,11 +19,11 @@ SCANNER_INFO = {
 
 SCANNER_STAGE_MAP = {
     "AA:FC:8C:18:12:33": "Checking",
-    "AA:FC:8D:4C:11:35": "Sewing",
+    "AA:FC:8D:4C:11:35": "Sewing_1",
     "AA:FC:8E:56:11:35": "Tailoring",
     "AA:FC:4B:5A:10:35": "Ironing",
-    "AA:FC:4A:1C:10:35": "TestFabric",
-    "AA:FC:65:5B:11:35": "TestPacking"
+    "AA:FC:4A:1C:10:35": "Sewing_2",
+    "AA:FC:65:5B:11:35": "Sewing_3"
 }
 
 SCANNER_PERSON_MAP = {
@@ -31,9 +31,11 @@ SCANNER_PERSON_MAP = {
     "AA:FC:8D:4C:11:35": "Asgar",
     "AA:FC:8E:56:11:35": "Jatin",
     "AA:FC:4B:5A:10:35": "Ramesh",
-    "AA:FC:4A:1C:10:35": "TestAfreen",
-    "AA:FC:65:5B:11:35": "TestSneha"
+    "AA:FC:4A:1C:10:35": "Zakhir",
+    "AA:FC:65:5B:11:35": "Sharif"
 }
+
+STAGE_SEQUENCE = ["Tailoring","Sewing_1","Sewing_2","Sewing_3","Checking","Ironing"]
 
 
 SCANNER_MAC_ADDRESSES = list(SCANNER_INFO.keys())
@@ -118,11 +120,21 @@ async def handle_scanner(mac):
                             entries = existing.get("entries", [])
                             entries.append(entry_data)
 
+                            # Gather all stages scanned so far
+                            scanned_stages = [entry["stage"] for entry in entries]
+                            scanned_stages.append(stage)  # Include current scan
+
+                            # Filter out invalid stages just in case
+                            valid_stages = [s for s in scanned_stages if s in STAGE_SEQUENCE]
+
+                            # Determine the farthest stage according to the defined order
+                            current_stage = max(valid_stages, key=lambda s: STAGE_SEQUENCE.index(s)) if valid_stages else stage
+
                             collection.update_one(
                                 {"order_id": order_id},
                                 {
                                     "$set": {
-                                        "current_stage": stage,
+                                        "current_stage": current_stage,
                                         "duplicate_count": duplicate_count,
                                         "entries": entries
                                     }
@@ -130,11 +142,11 @@ async def handle_scanner(mac):
                             )
                         else:
                             doc = {
-                                "order_id": order_id,
-                                "duplicate_count": 1,
-                                "current_stage": stage,
-                                "entries": [entry_data]
-                            }
+                                    "order_id": order_id,
+                                    "duplicate_count": 1,
+                                    "current_stage": stage,
+                                    "entries": [entry_data]
+                                }
                             collection.insert_one(doc)
 
                     log(f"✅ Upload complete from {person_name}\n", "green")
