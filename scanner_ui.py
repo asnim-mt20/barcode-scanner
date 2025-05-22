@@ -54,7 +54,6 @@ exit_button = tk.Button(button_frame, text="Exit", bg="red", fg="white", font=("
 start_button.pack(side='left', padx=20)
 exit_button.pack(side='left', padx=10)
 
-
 # Font size increased to 12 and made bold
 log_output = scrolledtext.ScrolledText(root, wrap=tk.WORD, font=("Yu Gothic UI", 13, "bold"))
 log_output.pack(expand=True, fill='both')
@@ -109,10 +108,11 @@ async def handle_scanner(mac):
 
                         existing = collection.find_one({"order_id": order_id})
                         entry_data = {
-                            "stage": stage,
+                            stage:{
                             "scanning_device": scanner_name,
                             "scanned_by": person_name,
                             "timestamp": timestamp
+                            }
                         }
 
                         if existing:
