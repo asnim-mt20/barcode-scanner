@@ -116,6 +116,7 @@ async def handle_scanner(mac):
                         }
 
                         if existing:
+                            # log(f"[DEBUG] Updating existing document for order_id: {order_id}", "gray")
                             duplicate_count = existing.get("duplicate_count", 1) + 1
                             entries = existing.get("entries", [])
                             entries.append(entry_data)
@@ -141,6 +142,7 @@ async def handle_scanner(mac):
                                 }
                             )
                         else:
+                            # log(f"[DEBUG] Inserting new document for order_id: {order_id}", "gray")
                             doc = {
                                     "order_id": order_id,
                                     "duplicate_count": 1,
@@ -151,6 +153,7 @@ async def handle_scanner(mac):
 
                     log(f"✅ Upload complete from {person_name}\n", "green")
                 else:
+                    # log(f"[DEBUG] Data buffer was empty for {scanner_name}", "gray")
                     log(f"⚠️ No data received from {person_name}", "deepred")
     except Exception as e:
         log(f"❌ Error with {scanner_name} by {person_name}: {e}", "deepred")
