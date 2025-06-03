@@ -98,7 +98,7 @@ async def handle_scanner(mac):
                     data_buffer.append(decoded)
 
                 await client.start_notify(UUID_RX, notification_handler)
-                await asyncio.sleep(30)
+                await asyncio.sleep(10)
                 await client.stop_notify(UUID_RX)
 
                 if data_buffer:
@@ -116,14 +116,18 @@ async def handle_scanner(mac):
                         }
 
                         if existing:
-                            # log(f"[DEBUG] Updating existing document for order_id: {order_id}", "gray")
                             duplicate_count = existing.get("duplicate_count", 1) + 1
                             entries = existing.get("entries", [])
                             entries.append(entry_data)
 
                             # Gather all stages scanned so far
-                            scanned_stages = [entry["stage"] for entry in entries]
-                            scanned_stages.append(stage)  # Include current scan
+                            scanned_stages = []
+                            for entry in entries:
+                                if isinstance(entry, dict):
+                                    if "stage" in entry:  # old format
+                                        scanned_stages.append(entry["stage"])
+                                    else:  # new format: {stage_name: {details}}
+                                        scanned_stages.extend(entry.keys())
 
                             # Filter out invalid stages just in case
                             valid_stages = [s for s in scanned_stages if s in STAGE_SEQUENCE]
@@ -142,7 +146,6 @@ async def handle_scanner(mac):
                                 }
                             )
                         else:
-                            # log(f"[DEBUG] Inserting new document for order_id: {order_id}", "gray")
                             doc = {
                                     "order_id": order_id,
                                     "duplicate_count": 1,
@@ -153,7 +156,6 @@ async def handle_scanner(mac):
 
                     log(f"✅ Upload complete from {person_name}\n", "green")
                 else:
-                    # log(f"[DEBUG] Data buffer was empty for {scanner_name}", "gray")
                     log(f"⚠️ No data received from {person_name}", "deepred")
     except Exception as e:
         log(f"❌ Error with {scanner_name} by {person_name}: {e}", "deepred")
@@ -178,4 +180,3 @@ start_button.config(command=on_start)
 exit_button.config(command=on_exit)
 
 root.mainloop()
-
